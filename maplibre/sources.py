@@ -17,6 +17,7 @@ class SourceType(Enum):
     GEOJSON = "geojson"
     IMAGE = "image"
     VIDEO = "video"
+    IMAGESERVICE = "raster"
 
 
 class Source(BaseModel):
@@ -57,6 +58,17 @@ class GeoJSONSource(Source):
     @property
     def type(self) -> str:
         return SourceType.GEOJSON.value
+
+
+class ImageServiceSource(Source):
+    """ESRI ImageService source
+    """
+    url: str = None
+
+    @computed_field
+    @property
+    def type(self) -> str:
+        return SourceType.IMAGESERVICE.value
 
 
 class RasterTileSource(Source):
