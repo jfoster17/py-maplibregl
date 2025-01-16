@@ -15,24 +15,67 @@ function createMap(mapOptions, model) {
   if (mapOptions.navigationControl === undefined) {
     mapOptions.navigationControl = true;
   }
-  // Create customMapMethods at the start of createMap
   const customMapMethods = getCustomMapMethods(maplibregl, map);
 
   if (mapOptions.navigationControl) {
     map.addControl(new maplibregl.NavigationControl());
   }
 
+  let isDragging = false;
+  let dragPoints = [];
+
+  map.on("mousedown", (e) => {
+    if (model.get('do_lasso')) {
+      isDragging = true;
+      dragPoints = [{
+        lng: e.lngLat.lng,
+        lat: e.lngLat.lat
+      }];
+      map.dragPan.disable(); // Disable map panning while drawing
+    }
+  });
+
+  map.on("mousemove", (e) => {
+    if (isDragging && model.get('do_lasso')) {
+      dragPoints.push({
+        lng: e.lngLat.lng,
+        lat: e.lngLat.lat
+      });
+      model.set('lasso_locations', dragPoints);
+      model.save_changes();
+    }
+  });
+
+  map.on("mouseup", () => {
+    if (isDragging && model.get('do_lasso')) {
+      isDragging = false;
+      map.dragPan.enable(); // Re-enable map panning
+    }
+  });
+
+  // Replace the existing click handler with mouseover/mouseout handlers
   map.on("mouseover", () => {
-    map.getCanvas().style.cursor = "pointer";
+    if (model.get('do_lasso')) {
+      map.getCanvas().style.cursor = "crosshair";
+    } else {
+      map.getCanvas().style.cursor = "pointer";
+    }
   });
 
   map.on("mouseout", () => {
     map.getCanvas().style.cursor = "";
+    if (isDragging && model.get('do_lasso')) {
+      isDragging = false;
+      map.dragPan.enable();
+    }
   });
 
-  map.on("click", (e) => {
-    model.set("lng_lat", e.lngLat);
-    model.save_changes();
+  // Keep the regular click handler for non-lasso mode
+  map.on('click', (e) => {
+    if (!model.get('do_lasso')) {
+      model.set("lng_lat", e.lngLat);
+      model.save_changes();
+    }
   });
 
   map.once("load", () => {
@@ -124,6 +167,7 @@ export function render({ model, el }) {
     console.log("custom msg", msg);
     apply(msg.calls);
   });
+
 
   el.appendChild(container);
 }
