@@ -5,6 +5,7 @@ from pathlib import Path
 
 import traitlets
 from anywidget import AnyWidget
+from ipywidgets import CallbackDispatcher, widget_serialization
 
 from .controls import Control, ControlPosition
 from .layer import Layer
@@ -34,11 +35,32 @@ class MapWidget(AnyWidget, Map):
     calls = traitlets.List().tag(sync=True)
     height = traitlets.Union([traitlets.Int(), traitlets.Unicode()]).tag(sync=True)
     lng_lat = traitlets.Dict().tag(sync=True)
+    do_lasso = traitlets.Bool(False).tag(sync=True)
+
+    _click_callbacks = traitlets.Instance(CallbackDispatcher, ())
 
     def __init__(self, map_options=MapOptions(), **kwargs) -> None:
         self.calls = []
         AnyWidget.__init__(self, **kwargs)
         Map.__init__(self, map_options, **kwargs)
+
+    def _handle_mouse_events(self, _, content, buffers):
+        event_type = content.get("type", "")
+        if event_type == "click":
+            self._click_callbacks(**content)
+
+    def on_click(self, callback, remove=False):
+        """Add a click event listener.
+
+        Parameters
+        ----------
+        callback : callable
+            Callback function that will be called on click event.
+        remove: boolean
+            Whether to remove this callback or not. Defaults to False.
+        """
+        self._click_callbacks.register_callback(callback, remove=remove)
+
 
     @traitlets.default("height")
     def _default_height(self):

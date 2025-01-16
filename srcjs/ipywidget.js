@@ -1,4 +1,5 @@
 import maplibregl from "https://esm.sh/maplibre-gl@3.6.2";
+import {ImageService} from './../../mapbox-gl-esri-sources/src/main.js';
 import { applyMapMethod, getCustomMapMethods } from "./mapmethods";
 
 function createContainer(model) {
@@ -14,6 +15,8 @@ function createMap(mapOptions, model) {
   if (mapOptions.navigationControl === undefined) {
     mapOptions.navigationControl = true;
   }
+  // Create customMapMethods at the start of createMap
+  const customMapMethods = getCustomMapMethods(maplibregl, map);
 
   if (mapOptions.navigationControl) {
     map.addControl(new maplibregl.NavigationControl());
@@ -33,10 +36,51 @@ function createMap(mapOptions, model) {
   });
 
   map.once("load", () => {
+    console.log('map onload once..')
     map.resize();
+    const imageSourceId = 'imagery-source';
+
+    const layers = map.getStyle().layers;
+    // Find the index of the first symbol layer in the map style
+    let firstSymbolId;
+    for (let i = 0; i < layers.length; i++) {
+        if (layers[i].type === 'symbol') {
+            firstSymbolId = layers[i].id;
+            break;
+        }
+    }
+    const imageService = new ImageService(imageSourceId, map, {
+        url: 'https://gis.earthdata.nasa.gov/image/rest/services/C2930763263-LARC_CLOUD/TEMPO_NO2_L3_V03_HOURLY_TROPOSPHERIC_VERTICAL_COLUMN/ImageServer',
+        renderingRule: { "rasterFunction": "torch_RGB" },
+        //from: valid_times[0],
+        //to: valid_times[1],
+        getAttributionFromService:false,
+        },
+        { maxzoom:5,
+          attribution:"Test",
+        },
+    );
+    console.log(imageService)
+   map.addLayer({
+          id: 'imagery-layer',
+          type: 'raster',
+          source: imageSourceId
+          },
+          firstSymbolId
+      );
+    
+    // Store the imageService instance on the map
+    map.imageService = imageService;
+  
+    // Add imageService methods to customMapMethods
+    Object.getOwnPropertyNames(Object.getPrototypeOf(imageService))
+      .filter(prop => typeof imageService[prop] === 'function')
+      .forEach(method => {
+        customMapMethods[method] = (...args) => imageService[method](...args);
+      });
   });
 
-  return map;
+  return [map, customMapMethods]; // Return both map and methods
 }
 
 export function render({ model, el }) {
@@ -48,11 +92,10 @@ export function render({ model, el }) {
     model.get("map_options"),
   );
   console.log(mapOptions);
-  const map = createMap(mapOptions, model);
+  const [map, customMapMethods] = createMap(mapOptions, model);
 
   // As a  Workaround we need to pass maplibregl module to customMapMethods
   // to avoid duplicated imports (current bug in esbuild)
-  const customMapMethods = getCustomMapMethods(maplibregl, map);
 
   const apply = (calls) => {
     calls.forEach((call) => {
