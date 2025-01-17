@@ -168,6 +168,49 @@ export function render({ model, el }) {
     apply(msg.calls);
   });
 
+  map.on('click', (e) => {
+    //console.log('I saw a click');
+    //console.log(e)
+    model.send({
+        type: 'click',
+        lngLat: e.lngLat,
+        point: e.point,
+        features: e.features
+    });
+  });
+
+  let lastMove = 0;
+  map.on('mousemove', (e) => {
+      const now = Date.now();
+      if (now - lastMove > 100) {  // 100ms throttle
+          //console.log(e.lngLat)
+          model.send({
+              type: 'mousemove',
+              lngLat: e.lngLat,
+              point: e.point,
+              features: e.features
+          });
+          lastMove = now;
+      }
+  });
+
+  map.on('mouseenter', (e) => {
+      model.send({
+          type: 'mouseenter',
+          lngLat: e.lngLat,
+          point: e.point,
+          features: e.features
+      });
+  });
+
+  map.on('mouseleave', (e) => {
+      model.send({
+          type: 'mouseleave',
+          lngLat: e.lngLat,
+          point: e.point,
+          features: e.features
+      });
+  });
 
   el.appendChild(container);
 }

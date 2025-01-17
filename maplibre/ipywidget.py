@@ -38,31 +38,55 @@ class MapWidget(AnyWidget, Map):
     do_lasso = traitlets.Bool(False).tag(sync=True)
     lasso_locations = traitlets.List().tag(sync=True)
 
-    #_click_callbacks = traitlets.Instance(CallbackDispatcher, ())
+    _click_callbacks = traitlets.Instance(CallbackDispatcher, ())
+    _mousemove_callbacks = traitlets.Instance(CallbackDispatcher, ())
+    _mouseenter_callbacks = traitlets.Instance(CallbackDispatcher, ())
+    _mouseleave_callbacks = traitlets.Instance(CallbackDispatcher, ())
 
     def __init__(self, map_options=MapOptions(), **kwargs) -> None:
         self.calls = []
         AnyWidget.__init__(self, **kwargs)
         Map.__init__(self, map_options, **kwargs)
-        #self.on_msg(self._handle_mouse_events)
+        self.on_msg(self._handle_mouse_events)
 
-    #def _handle_mouse_events(self, _, content, buffers):
-    #    event_type = content.get("type", "")
-    #    if event_type == "click":
-    #        self._click_callbacks(**content)
+    def _handle_mouse_events(self, _, content, buffers):
+        """Handle mouse events from the frontend."""
+        print("Inside _handle_mouse_events...")
+        print(f"{content=}")
+        print(f"{buffers=}")
+        event_type = content.get("type", "")
+        if event_type == "click":
+            self._click_callbacks(**content)
+        elif event_type == "mousemove":
+            self._mousemove_callbacks(**content)
+        elif event_type == "mouseenter":
+            self._mouseenter_callbacks(**content)
+        elif event_type == "mouseleave":
+            self._mouseleave_callbacks(**content)
 
-    #def on_click(self, callback, remove=False):
-    #    """Add a click event listener.
-    #
-    #    Parameters
-    #    ----------
-    #    callback : callable
-    #        Callback function that will be called on click event.
-    #    remove: boolean
-    #        Whether to remove this callback or not. Defaults to False.
-    #    """
-    #    self._click_callbacks.register_callback(callback, remove=remove)
+    def on_click(self, callback, remove=False):
+        """Add a click event listener.
 
+        Parameters
+        ----------
+        callback : callable
+            Callback function that will be called on click event.
+        remove: boolean
+            Whether to remove this callback or not. Defaults to False.
+        """
+        self._click_callbacks.register_callback(callback, remove=remove)
+
+    def on_mousemove(self, callback, remove=False):
+        """Add a mousemove event listener."""
+        self._mousemove_callbacks.register_callback(callback, remove=remove)
+
+    def on_mouseenter(self, callback, remove=False):
+        """Add a mouseenter event listener."""
+        self._mouseenter_callbacks.register_callback(callback, remove=remove)
+
+    def on_mouseleave(self, callback, remove=False):
+        """Add a mouseleave event listener."""
+        self._mouseleave_callbacks.register_callback(callback, remove=remove)
 
     @traitlets.default("height")
     def _default_height(self):
