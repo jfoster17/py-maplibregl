@@ -21,62 +21,62 @@ function createMap(mapOptions, model) {
     map.addControl(new maplibregl.NavigationControl());
   }
 
-  let isDragging = false;
-  let dragPoints = [];
+  //let isDragging = false;
+  //let dragPoints = [];
 
-  map.on("mousedown", (e) => {
-    if (model.get('do_lasso')) {
-      isDragging = true;
-      dragPoints = [{
-        lng: e.lngLat.lng,
-        lat: e.lngLat.lat
-      }];
-      map.dragPan.disable(); // Disable map panning while drawing
-    }
-  });
+  //map.on("mousedown", (e) => {
+  //  if (model.get('do_lasso')) {
+  //    isDragging = true;
+  //    dragPoints = [{
+  //      lng: e.lngLat.lng,
+  //      lat: e.lngLat.lat
+  //    }];
+  //    map.dragPan.disable(); // Disable map panning while drawing
+  //  }
+  //});
 
-  map.on("mousemove", (e) => {
-    if (isDragging && model.get('do_lasso')) {
-      dragPoints.push({
-        lng: e.lngLat.lng,
-        lat: e.lngLat.lat
-      });
-      model.set('lasso_locations', dragPoints);
-      model.save_changes();
-    }
-  });
+  //map.on("mousemove", (e) => {
+  //  if (isDragging && model.get('do_lasso')) {
+  //    dragPoints.push({
+  //      lng: e.lngLat.lng,
+  //      lat: e.lngLat.lat
+  //    });
+  //    model.set('lasso_locations', dragPoints);
+  //    model.save_changes();
+  //  }
+  //});
 
-  map.on("mouseup", () => {
-    if (isDragging && model.get('do_lasso')) {
-      isDragging = false;
-      map.dragPan.enable(); // Re-enable map panning
-    }
-  });
+  //map.on("mouseup", () => {
+  //  if (isDragging && model.get('do_lasso')) {
+  //    isDragging = false;
+  //    map.dragPan.enable(); // Re-enable map panning
+  //  }
+  //});
 
   // Replace the existing click handler with mouseover/mouseout handlers
-  map.on("mouseover", () => {
-    if (model.get('do_lasso')) {
-      map.getCanvas().style.cursor = "crosshair";
-    } else {
-      map.getCanvas().style.cursor = "pointer";
-    }
-  });
+  //map.on("mouseover", () => {
+  // if (model.get('do_lasso')) {
+  //    map.getCanvas().style.cursor = "crosshair";
+  //  } else {
+  //    map.getCanvas().style.cursor = "pointer";
+  //  }
+  //});
 
-  map.on("mouseout", () => {
-    map.getCanvas().style.cursor = "";
-    if (isDragging && model.get('do_lasso')) {
-      isDragging = false;
-      map.dragPan.enable();
-    }
-  });
+  //map.on("mouseout", () => {
+  //  map.getCanvas().style.cursor = "";
+  //  if (isDragging && model.get('do_lasso')) {
+  //    isDragging = false;
+  //    map.dragPan.enable();
+  //  }
+  //});
 
   // Keep the regular click handler for non-lasso mode
-  map.on('click', (e) => {
-    if (!model.get('do_lasso')) {
-      model.set("lng_lat", e.lngLat);
-      model.save_changes();
-    }
-  });
+  //map.on('click', (e) => {
+  //  if (!model.get('do_lasso')) {
+  //    model.set("lng_lat", e.lngLat);
+  //    model.save_changes();
+  //  }
+  //});
 
   map.once("load", () => {
     console.log('map onload once..')
@@ -168,6 +168,14 @@ export function render({ model, el }) {
     apply(msg.calls);
   });
 
+  model.on("change:dragging", (change) => {
+    if (!change.newValue) {
+      map.dragPan.disable();
+    } else {
+      map.dragPan.enable();
+    }
+  });
+  
   map.on('click', (e) => {
     //console.log('I saw a click');
     //console.log(e)
@@ -209,6 +217,24 @@ export function render({ model, el }) {
           lngLat: e.lngLat,
           point: e.point,
           features: e.features
+      });
+  });
+
+  map.on('mousedown', (e) => {
+      model.send({
+          type: 'mousedown',
+          lngLat: e.lngLat,
+          point: e.point,
+          features: e.features
+      });
+  });
+
+  map.on('mouseup', (e) => {
+    model.send({
+        type: 'mouseup',
+        lngLat: e.lngLat,
+        point: e.point,
+        features: e.features
       });
   });
 
