@@ -35,14 +35,12 @@ class MapWidget(AnyWidget, Map):
     calls = traitlets.List().tag(sync=True)
     height = traitlets.Union([traitlets.Int(), traitlets.Unicode()]).tag(sync=True)
     lng_lat = traitlets.Dict().tag(sync=True)
-    do_lasso = traitlets.Bool(False).tag(sync=True)
-    lasso_locations = traitlets.List().tag(sync=True)
     dragging = traitlets.Bool(True).tag(sync=True)
 
     _click_callbacks = traitlets.Instance(CallbackDispatcher, ())
     _mousemove_callbacks = traitlets.Instance(CallbackDispatcher, ())
     _mouseenter_callbacks = traitlets.Instance(CallbackDispatcher, ())
-    _mouseleave_callbacks = traitlets.Instance(CallbackDispatcher, ())
+    _mouseout_callbacks = traitlets.Instance(CallbackDispatcher, ())
     _mousedown_callbacks = traitlets.Instance(CallbackDispatcher, ())
     _mouseup_callbacks = traitlets.Instance(CallbackDispatcher, ())
 
@@ -64,8 +62,8 @@ class MapWidget(AnyWidget, Map):
             self._mousemove_callbacks(**content)
         elif event_type == "mouseenter":
             self._mouseenter_callbacks(**content)
-        elif event_type == "mouseleave":
-            self._mouseleave_callbacks(**content)
+        elif event_type == "mouseout":
+            self._mouseout_callbacks(**content)
         elif event_type == "mousedown":
             self._mousedown_callbacks(**content)
         elif event_type == "mouseup":
@@ -91,9 +89,9 @@ class MapWidget(AnyWidget, Map):
         """Add a mouseenter event listener."""
         self._mouseenter_callbacks.register_callback(callback, remove=remove)
 
-    def on_mouseleave(self, callback, remove=False):
-        """Add a mouseleave event listener."""
-        self._mouseleave_callbacks.register_callback(callback, remove=remove)
+    def on_mouseout(self, callback, remove=False):
+        """Add a mouseout event listener."""
+        self._mouseout_callbacks.register_callback(callback, remove=remove)
 
     def on_mousedown(self, callback, remove=False):
         """Add a mousedown event listener."""

@@ -168,10 +168,13 @@ export function render({ model, el }) {
     apply(msg.calls);
   });
 
-  model.on("change:dragging", (change) => {
-    if (!change.newValue) {
+  model.on("change:dragging", (o) => {
+    //console.log("Changing dragPan", o.changed.dragging)
+    if (!o.changed.dragging) {
+      map.boxZoom.disable();
       map.dragPan.disable();
     } else {
+      map.boxZoom.enable();
       map.dragPan.enable();
     }
   });
@@ -190,7 +193,7 @@ export function render({ model, el }) {
   let lastMove = 0;
   map.on('mousemove', (e) => {
       const now = Date.now();
-      if (now - lastMove > 100) {  // 100ms throttle
+      if (now - lastMove > 20) {  // 20ms throttle
           //console.log(e.lngLat)
           model.send({
               type: 'mousemove',
@@ -211,14 +214,16 @@ export function render({ model, el }) {
       });
   });
 
-  map.on('mouseleave', (e) => {
+  map.on('mouseout', (e) => {
+    console.log("Got a mouseout event...")
       model.send({
-          type: 'mouseleave',
+          type: 'mouseout',
           lngLat: e.lngLat,
           point: e.point,
           features: e.features
       });
   });
+
 
   map.on('mousedown', (e) => {
       model.send({
