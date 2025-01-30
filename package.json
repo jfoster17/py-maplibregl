@@ -24,7 +24,9 @@
   },
   "dependencies": {
     "@mapbox/sphericalmercator": "^2.0.1",
+    "@mapbox/whoots-js": "^3.1.0",
     "mapbox-gl-esri-sources": "^0.0.7",
-    "mustache": "^4.2.0"
+    "mustache": "^4.2.0",
+    "whoots-js": "^2.1.0"
   }
 }

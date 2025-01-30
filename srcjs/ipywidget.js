@@ -3,7 +3,7 @@ import {ImageService} from './../../mapbox-gl-esri-sources/src/main.js';
 import { applyMapMethod, getCustomMapMethods } from "./mapmethods";
 import {tileToMeterBounds, getCoveringTiles} from "./tilebelt.js";
 import {SphericalMercator} from '@mapbox/sphericalmercator';
-
+import {getTileBBox} from '@mapbox/whoots-js';
 
 function createContainer(model) {
   const id = "pymaplibregl";
@@ -183,14 +183,14 @@ export function render({ model, el }) {
   });
   
   model.on("change:timesteps", (o) => {
-    const merc = new SphericalMercator({
-      size: 256,
-      antimeridian: true
-    });
+    //const merc = new SphericalMercator({
+    //  size: 256,
+    //  antimeridian: true
+    //});
     let timesteps = o.changed.timesteps
     console.log('change timesteps')
     let bounds = map.getBounds();
-    let zoom = Math.round(map.getZoom());
+    let zoom = Math.ceil(map.getZoom())+1;
     console.log('Zoom:', zoom);
     let tiles = getCoveringTiles([bounds._ne.lat, bounds._sw.lng, bounds._sw.lat, bounds._ne.lng], zoom)
     console.log(tiles)
@@ -199,7 +199,8 @@ export function render({ model, el }) {
       for (let j = tiles[1]; j <= tiles[3]; j++) {
         //console.log('j,i,zoom:', j, i, zoom)
         //console.log(merc.bbox(j,i,zoom,false,'900913'))
-        bboxes.push(merc.bbox(j,i,zoom,false,'900913'))
+        //bboxes.push(merc.bbox(j,i,zoom,false,'900913'))
+        bboxes.push(getTileBBox(j,i,zoom));
         //bboxes.push(tileToMeterBounds(j, i, zoom)); // This is x,y,z
 //        console.log("Tile:", tile);
     }
@@ -212,7 +213,16 @@ export function render({ model, el }) {
     let new_url = url.replace(/time\=\d+/,`time=${timestep}`)
     console.log(new_url)
     bboxes.forEach(bbox=>{
-      new_urls.push(new_url.replace('{bbox-epsg-3857}',bbox[0]+','+bbox[1]+','+bbox[2]+','+bbox[3]));
+      //let x0 = bbox[0];
+      //let x1 = bbox[1];
+      //let x2 = bbox[2];
+      //let x3 = bbox[3];
+      //if (Math.abs(x0) < 0.00001){x0 = 0;}
+      //if (Math.abs(x1) < 0.00001){x1 = 0;}
+      //if (Math.abs(x2) < 0.00001){x2 = 0;}
+      //if (Math.abs(x3) < 0.00001){x3 = 0;}
+
+      new_urls.push(new_url.replace('{bbox-epsg-3857}',bbox));
     })
   
   } 
