@@ -1,6 +1,9 @@
 import maplibregl from "https://esm.sh/maplibre-gl@3.6.2";
 import {ImageService} from './../../mapbox-gl-esri-sources/src/main.js';
 import { applyMapMethod, getCustomMapMethods } from "./mapmethods";
+import {tileToMeterBounds, getCoveringTiles} from "./tilebelt.js";
+import {SphericalMercator} from '@mapbox/sphericalmercator';
+
 
 function createContainer(model) {
   const id = "pymaplibregl";
@@ -179,6 +182,85 @@ export function render({ model, el }) {
     }
   });
   
+  model.on("change:timesteps", (o) => {
+    const merc = new SphericalMercator({
+      size: 256,
+      antimeridian: true
+    });
+    let timesteps = o.changed.timesteps
+    console.log('change timesteps')
+    let bounds = map.getBounds();
+    let zoom = Math.round(map.getZoom());
+    console.log('Zoom:', zoom);
+    let tiles = getCoveringTiles([bounds._ne.lat, bounds._sw.lng, bounds._sw.lat, bounds._ne.lng], zoom)
+    console.log(tiles)
+    const bboxes = []
+    for (let i = tiles[0]; i <= tiles[2]; i++) {
+      for (let j = tiles[1]; j <= tiles[3]; j++) {
+        //console.log('j,i,zoom:', j, i, zoom)
+        //console.log(merc.bbox(j,i,zoom,false,'900913'))
+        bboxes.push(merc.bbox(j,i,zoom,false,'900913'))
+        //bboxes.push(tileToMeterBounds(j, i, zoom)); // This is x,y,z
+//        console.log("Tile:", tile);
+    }
+  }
+  console.log("BBoxes:", bboxes);
+  const url = map.imageService._source.tiles[0]
+  
+  const new_urls = [];
+  for (const timestep of timesteps){
+    let new_url = url.replace(/time\=\d+/,`time=${timestep}`)
+    console.log(new_url)
+    bboxes.forEach(bbox=>{
+      new_urls.push(new_url.replace('{bbox-epsg-3857}',bbox[0]+','+bbox[1]+','+bbox[2]+','+bbox[3]));
+    })
+  
+  } 
+  console.log(new_urls)
+  
+  const target=`
+  let controller;
+  let signal;
+  onmessage = function (o){
+    if (controller !== undefined && controller.signal !== undefined && !controller.signal.aborted){
+        controller.abort();               
+    }
+    if (o.data.abort){
+        postMessage({t: Date.now(), e: true});
+        return;
+    }
+    controller = new AbortController();
+    signal = controller.signal; 
+    //async function getURL(url){
+    //    await fetch(url);
+    //}
+    Promise.all(o.data.map(u => fetch(u, {signal})))
+      .then(d => {
+        console.log(d)
+      })
+      .catch(e => {
+        });
+
+    //getURL(o.data);
+  }`;
+  const mission = URL.createObjectURL(new Blob([target], { 'type': 'text/javascript' }));
+
+  
+  //const myurl = new URL('./worker.js', import.meta.url)
+  //console.log(myurl)
+  const precache_worker = new Worker(mission);
+  precache_worker.postMessage(new_urls)
+
+  //const new_url = url.replace('{bbox-epsg-3857}',bboxes[0][0]+','+bboxes[0][1]+','+bboxes[0][2]+','+bboxes[0][3])
+  //console.log(new_url);
+  //async function getURL(url){
+  //    const response = await fetch(url);
+  //    return response
+  //}
+  //let response = getURL(new_url);
+  //console.log(response)
+  });
+
   map.on('click', (e) => {
     //console.log('I saw a click');
     //console.log(e)

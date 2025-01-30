@@ -36,6 +36,7 @@ class MapWidget(AnyWidget, Map):
     height = traitlets.Union([traitlets.Int(), traitlets.Unicode()]).tag(sync=True)
     lng_lat = traitlets.Dict().tag(sync=True)
     dragging = traitlets.Bool(True).tag(sync=True)
+    timesteps = traitlets.List().tag(sync=True)
 
     _click_callbacks = traitlets.Instance(CallbackDispatcher, ())
     _mousemove_callbacks = traitlets.Instance(CallbackDispatcher, ())
