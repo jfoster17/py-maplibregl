@@ -245,22 +245,3 @@ export function bboxToTile(bboxCoords) {
   const y = bbox[1] >>> (32 - z);
   return [x, y, z];
 }
-
-export function tileToMeterBounds(x, y, z){
-    console.log("inside tileToMeterBounds")
-    const originShift = 2 * Math.PI * 6378137 / 2.0
-    const tileSize = 256
-    const initialResolution = 2 * Math.PI * 6378137 / 256
-    function res(it){
-        return initialResolution / Math.pow(2, it);
-    }
-
-    function pixelsToMeters(x, y, z) {
-        return [x * res(z) - originShift, y * res(z) - originShift];
-    }
-    const min = pixelsToMeters(x * tileSize, y * tileSize, z);
-    const max = pixelsToMeters((x + 1) * tileSize, (y + 1) * tileSize, z);
-    
-    return [min[0], min[1], max[0], max[1]]
-
-}

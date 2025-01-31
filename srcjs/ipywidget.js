@@ -24,63 +24,6 @@ function createMap(mapOptions, model) {
     map.addControl(new maplibregl.NavigationControl());
   }
 
-  //let isDragging = false;
-  //let dragPoints = [];
-
-  //map.on("mousedown", (e) => {
-  //  if (model.get('do_lasso')) {
-  //    isDragging = true;
-  //    dragPoints = [{
-  //      lng: e.lngLat.lng,
-  //      lat: e.lngLat.lat
-  //    }];
-  //    map.dragPan.disable(); // Disable map panning while drawing
-  //  }
-  //});
-
-  //map.on("mousemove", (e) => {
-  //  if (isDragging && model.get('do_lasso')) {
-  //    dragPoints.push({
-  //      lng: e.lngLat.lng,
-  //      lat: e.lngLat.lat
-  //    });
-  //    model.set('lasso_locations', dragPoints);
-  //    model.save_changes();
-  //  }
-  //});
-
-  //map.on("mouseup", () => {
-  //  if (isDragging && model.get('do_lasso')) {
-  //    isDragging = false;
-  //    map.dragPan.enable(); // Re-enable map panning
-  //  }
-  //});
-
-  // Replace the existing click handler with mouseover/mouseout handlers
-  //map.on("mouseover", () => {
-  // if (model.get('do_lasso')) {
-  //    map.getCanvas().style.cursor = "crosshair";
-  //  } else {
-  //    map.getCanvas().style.cursor = "pointer";
-  //  }
-  //});
-
-  //map.on("mouseout", () => {
-  //  map.getCanvas().style.cursor = "";
-  //  if (isDragging && model.get('do_lasso')) {
-  //    isDragging = false;
-  //    map.dragPan.enable();
-  //  }
-  //});
-
-  // Keep the regular click handler for non-lasso mode
-  //map.on('click', (e) => {
-  //  if (!model.get('do_lasso')) {
-  //    model.set("lng_lat", e.lngLat);
-  //    model.save_changes();
-  //  }
-  //});
-
   map.once("load", () => {
     console.log('map onload once..')
     map.resize();
@@ -183,26 +126,17 @@ export function render({ model, el }) {
   });
   
   model.on("change:timesteps", (o) => {
-    //const merc = new SphericalMercator({
-    //  size: 256,
-    //  antimeridian: true
-    //});
     let timesteps = o.changed.timesteps
-    console.log('change timesteps')
+    //console.log('change timesteps')
     let bounds = map.getBounds();
     let zoom = Math.ceil(map.getZoom())+1;
-    console.log('Zoom:', zoom);
+    //console.log('Zoom:', zoom);
     let tiles = getCoveringTiles([bounds._ne.lat, bounds._sw.lng, bounds._sw.lat, bounds._ne.lng], zoom)
-    console.log(tiles)
+    //console.log(tiles)
     const bboxes = []
     for (let i = tiles[0]; i <= tiles[2]; i++) {
       for (let j = tiles[1]; j <= tiles[3]; j++) {
-        //console.log('j,i,zoom:', j, i, zoom)
-        //console.log(merc.bbox(j,i,zoom,false,'900913'))
-        //bboxes.push(merc.bbox(j,i,zoom,false,'900913'))
         bboxes.push(getTileBBox(j,i,zoom));
-        //bboxes.push(tileToMeterBounds(j, i, zoom)); // This is x,y,z
-//        console.log("Tile:", tile);
     }
   }
   console.log("BBoxes:", bboxes);
@@ -211,17 +145,8 @@ export function render({ model, el }) {
   const new_urls = [];
   for (const timestep of timesteps){
     let new_url = url.replace(/time\=\d+/,`time=${timestep}`)
-    console.log(new_url)
+    //console.log(new_url)
     bboxes.forEach(bbox=>{
-      //let x0 = bbox[0];
-      //let x1 = bbox[1];
-      //let x2 = bbox[2];
-      //let x3 = bbox[3];
-      //if (Math.abs(x0) < 0.00001){x0 = 0;}
-      //if (Math.abs(x1) < 0.00001){x1 = 0;}
-      //if (Math.abs(x2) < 0.00001){x2 = 0;}
-      //if (Math.abs(x3) < 0.00001){x3 = 0;}
-
       new_urls.push(new_url.replace('{bbox-epsg-3857}',bbox));
     })
   
@@ -254,21 +179,9 @@ export function render({ model, el }) {
     //getURL(o.data);
   }`;
   const mission = URL.createObjectURL(new Blob([target], { 'type': 'text/javascript' }));
-
-  
-  //const myurl = new URL('./worker.js', import.meta.url)
-  //console.log(myurl)
   const precache_worker = new Worker(mission);
   precache_worker.postMessage(new_urls)
 
-  //const new_url = url.replace('{bbox-epsg-3857}',bboxes[0][0]+','+bboxes[0][1]+','+bboxes[0][2]+','+bboxes[0][3])
-  //console.log(new_url);
-  //async function getURL(url){
-  //    const response = await fetch(url);
-  //    return response
-  //}
-  //let response = getURL(new_url);
-  //console.log(response)
   });
 
   map.on('click', (e) => {

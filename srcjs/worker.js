@@ -1,3 +1,5 @@
+//For local testing anyway we have to put this inline as a Blob. Probably delete this file.
+
 let controller;
 let signal;
 onmessage = function (o){
