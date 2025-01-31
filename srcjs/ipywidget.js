@@ -13,6 +13,12 @@ function createContainer(model) {
   return container;
 }
 
+function updateModel(model, map) {
+  model.set("center", map.getCenter());
+  model.set("zoom", map.getZoom());
+  model.save_changes();
+}
+
 function createMap(mapOptions, model) {
   const map = new maplibregl.Map(mapOptions);
   if (mapOptions.navigationControl === undefined) {
@@ -27,6 +33,8 @@ function createMap(mapOptions, model) {
   map.once("load", () => {
     console.log('map onload once..')
     map.resize();
+    updateModel(model, map);
+
     const imageSourceId = 'imagery-source';
 
     const layers = map.getStyle().layers;
@@ -69,7 +77,75 @@ function createMap(mapOptions, model) {
       });
   });
 
+  map.on("zoomend", (e) => {
+    updateModel(model, map);
+  });
+
+  map.on("moveend", (e) => {
+    updateModel(model, map);
+  });
+
+
   return [map, customMapMethods]; // Return both map and methods
+}
+
+function precache({map, timesteps}){
+    console.log("Entering precache");
+    console.log("Timesteps:", timesteps);
+    let bounds = map.getBounds();
+    let zoom = Math.ceil(map.getZoom())+1;
+    console.log('Zoom:', zoom);
+    let tiles = getCoveringTiles([bounds._ne.lat, bounds._sw.lng, bounds._sw.lat, bounds._ne.lng], zoom)
+    console.log(tiles)
+    const bboxes = []
+    for (let i = tiles[0]; i <= tiles[2]; i++) {
+      for (let j = tiles[1]; j <= tiles[3]; j++) {
+        bboxes.push(getTileBBox(j,i,zoom));
+    }
+  }
+  //console.log("BBoxes:", bboxes);
+  const url = map.imageService._source.tiles[0]
+  
+  const new_urls = [];
+  for (const timestep of timesteps){
+    let new_url = url.replace(/time\=\d+/,`time=${timestep}`)
+    //console.log(new_url)
+    bboxes.forEach(bbox=>{
+      new_urls.push(new_url.replace('{bbox-epsg-3857}',bbox));
+    })
+  
+  } 
+  //console.log(new_urls)
+  
+  const target=`
+  let controller;
+  let signal;
+  onmessage = function (o){
+    if (controller !== undefined && controller.signal !== undefined && !controller.signal.aborted){
+        controller.abort();               
+    }
+    if (o.data.abort){
+        postMessage({t: Date.now(), e: true});
+        return;
+    }
+    controller = new AbortController();
+    signal = controller.signal; 
+    //async function getURL(url){
+    //    await fetch(url);
+    //}
+    Promise.all(o.data.map(u => fetch(u, {signal})))
+      .then(d => {
+        console.log(d)
+      })
+      .catch(e => {
+        });
+
+    //getURL(o.data);
+  }`;
+  const mission = URL.createObjectURL(new Blob([target], { 'type': 'text/javascript' }));
+  const precache_worker = new Worker(mission);
+  precache_worker.postMessage(new_urls)
+
 }
 
 export function render({ model, el }) {
@@ -126,63 +202,33 @@ export function render({ model, el }) {
   });
   
   model.on("change:timesteps", (o) => {
-    let timesteps = o.changed.timesteps
-    //console.log('change timesteps')
-    let bounds = map.getBounds();
-    let zoom = Math.ceil(map.getZoom())+1;
-    //console.log('Zoom:', zoom);
-    let tiles = getCoveringTiles([bounds._ne.lat, bounds._sw.lng, bounds._sw.lat, bounds._ne.lng], zoom)
-    //console.log(tiles)
-    const bboxes = []
-    for (let i = tiles[0]; i <= tiles[2]; i++) {
-      for (let j = tiles[1]; j <= tiles[3]; j++) {
-        bboxes.push(getTileBBox(j,i,zoom));
-    }
-  }
-  console.log("BBoxes:", bboxes);
-  const url = map.imageService._source.tiles[0]
-  
-  const new_urls = [];
-  for (const timestep of timesteps){
-    let new_url = url.replace(/time\=\d+/,`time=${timestep}`)
-    //console.log(new_url)
-    bboxes.forEach(bbox=>{
-      new_urls.push(new_url.replace('{bbox-epsg-3857}',bbox));
-    })
-  
-  } 
-  console.log(new_urls)
-  
-  const target=`
-  let controller;
-  let signal;
-  onmessage = function (o){
-    if (controller !== undefined && controller.signal !== undefined && !controller.signal.aborted){
-        controller.abort();               
-    }
-    if (o.data.abort){
-        postMessage({t: Date.now(), e: true});
-        return;
-    }
-    controller = new AbortController();
-    signal = controller.signal; 
-    //async function getURL(url){
-    //    await fetch(url);
-    //}
-    Promise.all(o.data.map(u => fetch(u, {signal})))
-      .then(d => {
-        console.log(d)
-      })
-      .catch(e => {
-        });
-
-    //getURL(o.data);
-  }`;
-  const mission = URL.createObjectURL(new Blob([target], { 'type': 'text/javascript' }));
-  const precache_worker = new Worker(mission);
-  precache_worker.postMessage(new_urls)
-
+    let timesteps = o.changed.timesteps;
+    precache({map, timesteps});
   });
+
+  model.on("change:zoom", (o) => {
+    let timesteps = model.get("timesteps");
+    precache({map, timesteps})
+  });
+
+
+  //The following does not work -- in part because
+  //the imageservice source/url is not defined when
+  //this gets called, since it is also updating.
+  //we *could* try having our model include
+  //zoom and center and whenever these change we
+  //call them here like the above.
+
+  //map.on("moveend", (o) => {
+  //  let timesteps = model.get("timesteps");
+  //  precache({map, timesteps})
+  //});
+
+  //map.on("zoomend", (o) => {
+  //  let timesteps = model.get("timesteps");
+  //  precache({map, timesteps})
+  //});
+
 
   map.on('click', (e) => {
     //console.log('I saw a click');
