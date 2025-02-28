@@ -48,7 +48,28 @@ function createMap(mapOptions, model) {
     }
     const imageService = new ImageService(imageSourceId, map, {
         url: 'https://gis.earthdata.nasa.gov/image/rest/services/C2930763263-LARC_CLOUD/TEMPO_NO2_L3_V03_HOURLY_TROPOSPHERIC_VERTICAL_COLUMN/ImageServer',
-        renderingRule: { "rasterFunction": "torch_RGB" },
+        renderingRule: {
+          "rasterFunctionArguments": {
+              "ColorrampName": "Plasma",
+              "Raster": {
+                  "rasterFunctionArguments": {
+                      "StretchType": 5,
+                      "Statistics": [[0, 30000000000000000, 910863682171422.1, 9474291611234248]],
+                      "DRA":false,
+                      "UseGamma":false,
+                      "Gamma": [1],
+                      "ComputeGamma":true,
+                      "Min": 0,
+                      "Max": 255
+                  },
+                  "rasterFunction": "Stretch",
+                  "outputPixelType": "U8",
+                  "variableName": "Raster"
+              }
+          },
+          "rasterFunction": "Colormap",
+          "variableName": "Raster"
+      },
         //from: valid_times[0],
         //to: valid_times[1],
         getAttributionFromService:false,
@@ -89,7 +110,7 @@ function createMap(mapOptions, model) {
   return [map, customMapMethods]; // Return both map and methods
 }
 
-function precache({map, timesteps}){
+async function precache({map, timesteps}) {
     console.log("Entering precache");
     console.log("Timesteps:", timesteps);
     let bounds = map.getBounds();
@@ -106,46 +127,41 @@ function precache({map, timesteps}){
   //console.log("BBoxes:", bboxes);
   const url = map.imageService._source.tiles[0]
   
-  const new_urls = [];
+  const urlsToCache = [];
   for (const timestep of timesteps){
     let new_url = url.replace(/time\=\d+/,`time=${timestep}`)
     //console.log(new_url)
     bboxes.forEach(bbox=>{
-      new_urls.push(new_url.replace('{bbox-epsg-3857}',bbox));
+      urlsToCache.push(new_url.replace('{bbox-epsg-3857}',bbox));
     })
   
   } 
   //console.log(new_urls)
   
-  const target=`
-  let controller;
-  let signal;
-  onmessage = function (o){
-    if (controller !== undefined && controller.signal !== undefined && !controller.signal.aborted){
-        controller.abort();               
-    }
-    if (o.data.abort){
-        postMessage({t: Date.now(), e: true});
-        return;
-    }
-    controller = new AbortController();
-    signal = controller.signal; 
-    //async function getURL(url){
-    //    await fetch(url);
-    //}
-    Promise.all(o.data.map(u => fetch(u, {signal})))
-      .then(d => {
-        console.log(d)
-      })
-      .catch(e => {
-        });
+  try {
+    const cache = await caches.open('tile-cache');
+    
+    // Fetch and cache all URLs
+    const fetchPromises = urlsToCache.map(async url => {
+        // Check if already cached
+        const matched = await cache.match(url);
+        if (!matched) {
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    await cache.put(url, response);
+                }
+            } catch (error) {
+                console.warn(`Failed to cache ${url}:`, error);
+            }
+        }
+    });
 
-    //getURL(o.data);
-  }`;
-  const mission = URL.createObjectURL(new Blob([target], { 'type': 'text/javascript' }));
-  const precache_worker = new Worker(mission);
-  precache_worker.postMessage(new_urls)
-
+    await Promise.all(fetchPromises);
+    console.log('Precaching complete');
+  } catch (error) {
+    console.error('Precaching failed:', error);
+  }
 }
 
 export function render({ model, el }) {
