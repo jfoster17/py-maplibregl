@@ -114,7 +114,7 @@ async function precache({map, timesteps}) {
     console.log("Entering precache");
     console.log("Timesteps:", timesteps);
     let bounds = map.getBounds();
-    let zoom = Math.ceil(map.getZoom())+1;
+    let zoom = Math.ceil(map.getZoom());
     console.log('Zoom:', zoom);
     let tiles = getCoveringTiles([bounds._ne.lat, bounds._sw.lng, bounds._sw.lat, bounds._ne.lng], zoom)
     console.log(tiles)
