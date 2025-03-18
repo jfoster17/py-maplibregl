@@ -40,6 +40,11 @@ class MapWidget(AnyWidget, Map):
     zoom = traitlets.Float().tag(sync=True)
     center = traitlets.Dict().tag(sync=True)
 
+    # This is a hacky solution to support a single ImageService layer for glue
+    # We change the url and that triggers all the other changes
+    imageservice_url = traitlets.Unicode('https://gis.earthdata.nasa.gov/image/rest/services/C2930763263-LARC_CLOUD/TEMPO_NO2_L3_V03_HOURLY_TROPOSPHERIC_VERTICAL_COLUMN/ImageServer').tag(sync=True)
+    imageservice_renderingrule = traitlets.Dict().tag(sync=True)
+
     _click_callbacks = traitlets.Instance(CallbackDispatcher, ())
     _mousemove_callbacks = traitlets.Instance(CallbackDispatcher, ())
     _mouseenter_callbacks = traitlets.Instance(CallbackDispatcher, ())

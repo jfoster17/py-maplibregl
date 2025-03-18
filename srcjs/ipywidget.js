@@ -1,8 +1,7 @@
 import maplibregl from "https://esm.sh/maplibre-gl@3.6.2";
 import {ImageService} from './../../mapbox-gl-esri-sources/src/main.js';
 import { applyMapMethod, getCustomMapMethods } from "./mapmethods";
-import {tileToMeterBounds, getCoveringTiles} from "./tilebelt.js";
-import {SphericalMercator} from '@mapbox/sphericalmercator';
+import {getCoveringTiles} from "./tilebelt.js";
 import {getTileBBox} from '@mapbox/whoots-js';
 
 function createContainer(model) {
@@ -47,7 +46,7 @@ function createMap(mapOptions, model) {
         }
     }
     const imageService = new ImageService(imageSourceId, map, {
-        url: 'https://gis.earthdata.nasa.gov/image/rest/services/C2930763263-LARC_CLOUD/TEMPO_NO2_L3_V03_HOURLY_TROPOSPHERIC_VERTICAL_COLUMN/ImageServer',
+        url: model.get('imageservice_url'),
         renderingRule: {
           "rasterFunctionArguments": {
               "ColorrampName": "Plasma",
@@ -225,6 +224,16 @@ export function render({ model, el }) {
   model.on("change:zoom", (o) => {
     let timesteps = model.get("timesteps");
     precache({map, timesteps})
+  });
+
+  //From python this means we need to do:
+  //m.imageservice_renderingRule = {newdict:stuff}
+  //m.imageservice_url = "New URL"
+  model.on("change:imageservice_url", (o) => {
+    console.log("imageservice url changing...");
+    map.imageService.esriServiceOptions.url = o.changed.imageservice_url;
+    map.imageService.esriServiceOptions.renderingRule =  model.get("imageservice_renderingrule");
+    map.imageService._updateSource(); //Trigger clearing tiles and stuff
   });
 
 
